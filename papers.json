@@ -6,7 +6,8 @@
    "zh": "单元测试卷 · 安全第一",
    "badge": "U4",
    "date": "2026-10-25",
-   "path": "papers/unit4-keeping-safe-quiz-paper.html"
+   "path": "papers/unit4-keeping-safe-quiz-paper.html",
+   "ver": 2
   },
   {
    "id": "unit3-hobbies-paper",
@@ -14,7 +15,8 @@
    "zh": "单元测试卷 · 兴趣爱好",
    "badge": "U3",
    "date": "2026-10-18",
-   "path": "papers/unit3-hobbies-quiz-paper.html"
+   "path": "papers/unit3-hobbies-quiz-paper.html",
+   "ver": 2
   }
  ]
 }
