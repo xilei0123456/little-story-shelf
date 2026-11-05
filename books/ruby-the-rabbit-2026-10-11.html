@@ -62,16 +62,38 @@ function render(){
   h += '<img src="'+p.img+'" alt="illustration">';
   h += '<div class="en">'+esc(p.en)+'</div>';
   h += '<div class="zh">'+esc(p.zh)+'</div>';
-  h += '<div><button class="playbtn" onclick="playCur()">🔊 听这一页</button></div>';
+  h += '<div><button class="playbtn" data-pk="page' + i + '" data-def="🔊 听这一页" data-on="⏸️ 暂停" data-off="▶️ 继续" onclick="playCur()">🔊 听这一页</button></div>';
   document.getElementById('card').innerHTML = h;
   document.getElementById('pgnum').textContent = (i+1)+' / '+(PAGES.length+1);
   document.getElementById('prev').disabled = (i===0);
   document.getElementById('next').textContent = (i===PAGES.length-1) ? '生词本 →' : '下一页 →';
   document.getElementById('words').style.display = 'none';
-  au.pause();
+  au.pause(); curKey = null;
 }
-function playCur(){ au.src = PAGES[i].audio; au.play(); }
-function playWord(idx){ au.src = WORDS[idx].audio; au.play(); }
+var RATE = 0.85, curKey = null;
+function setBtns(){
+  document.querySelectorAll('[data-pk]').forEach(function(b){
+    var k = b.getAttribute('data-pk');
+    if(k === curKey && !au.paused && !au.ended) b.textContent = b.getAttribute('data-on');
+    else if(k === curKey && au.currentTime > 0 && !au.ended) b.textContent = b.getAttribute('data-off');
+    else b.textContent = b.getAttribute('data-def');
+  });
+}
+function togglePlay(key, src){
+  if(curKey === key && au.src){
+    if(au.paused) au.play(); else au.pause();
+    setBtns(); return;
+  }
+  curKey = key; au.src = src;
+  try{ au.preservesPitch = true; }catch(e){}
+  au.playbackRate = RATE;
+  au.play(); setBtns();
+}
+au.addEventListener('ended', setBtns);
+au.addEventListener('play', setBtns);
+au.addEventListener('pause', setBtns);
+function playCur(){ togglePlay('page' + i, PAGES[i].audio); }
+function playWord(idx){ togglePlay('word' + idx, WORDS[idx].audio); }
 function go(d){
   if(stage!=='story') return;
   if(i===PAGES.length-1 && d===1){
@@ -82,14 +104,14 @@ function go(d){
   if(i===0 && d===-1) return;
   i += d; render();
 }
-function qAudio(idx){ au.src = QUIZ[idx].audio; au.play(); }
+function qAudio(idx){ togglePlay('quiz' + idx, QUIZ[idx].audio); }
 function showQuiz(){
   stage='quiz'; au.pause();
   var q = QUIZ[qi], h = '';
   h += '<div style="font-size:1rem;color:#c2703d;font-weight:bold;margin-bottom:10px">📝 小测验 Quiz '+(qi+1)+' / '+QUIZ.length+'</div>';
   h += '<div class="q">'+esc(q.q)+'</div>';
   h += '<div class="qzh">'+esc(q.zh)+'</div>';
-  h += '<div><button class="playbtn" style="margin-bottom:10px" onclick="qAudio('+qi+')">🔊 听题目</button></div>';
+  h += '<div><button class="playbtn" style="margin-bottom:10px" data-pk="quiz'+qi+'" data-def="🔊 听题目" data-on="⏸️ 暂停" data-off="▶️ 继续" onclick="qAudio('+qi+')">🔊 听题目</button></div>';
   q.options.forEach(function(o,idx){
     h += '<button class="opt" id="opt'+idx+'" onclick="answerQuiz('+idx+')">'+esc(o)+'</button>';
   });
@@ -138,7 +160,7 @@ function showWords(){
   stage='words';
   document.getElementById('card').innerHTML = '<div class="en" style="font-size:1.8rem;color:#c2703d;font-weight:bold">The End 💛</div><div class="zh">'+esc(ENDZH)+'</div>';
   var t = '<tr><th></th><th>Word</th><th></th><th>中文</th></tr>';
-  WORDS.forEach(function(w,idx){ t += '<tr><td><button class="wbtn" onclick="playWord('+idx+')">🔊</button></td><td class="word">'+esc(w.word)+'</td><td>'+esc(w.pos)+'</td><td>'+esc(w.zh)+'</td></tr>'; });
+  WORDS.forEach(function(w,idx){ t += '<tr><td><button class="wbtn" data-pk="word'+idx+'" data-def="🔊" data-on="⏸️" data-off="▶️" onclick="playWord('+idx+')">🔊</button></td><td class="word">'+esc(w.word)+'</td><td>'+esc(w.pos)+'</td><td>'+esc(w.zh)+'</td></tr>'; });
   document.getElementById('wtable').innerHTML = t;
   document.getElementById('words').style.display = 'block';
   document.getElementById('pgnum').textContent = (PAGES.length+1)+' / '+(PAGES.length+1);
