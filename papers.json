@@ -17,6 +17,24 @@
    "date": "2026-10-18",
    "path": "papers/unit3-hobbies-quiz-paper.html",
    "ver": 2
+  },
+  {
+   "id": "unit2-i-feel-good-paper",
+   "title": "Unit 2 I feel good",
+   "zh": "单元测试卷 · 感觉真好",
+   "badge": "U2",
+   "date": "2026-11-05",
+   "path": "papers/unit2-i-feel-good-quiz-paper.html",
+   "ver": 1
+  },
+  {
+   "id": "unit1-good-habits-paper",
+   "title": "Unit 1 Good habits",
+   "zh": "单元测试卷 · 好习惯",
+   "badge": "U1",
+   "date": "2026-11-05",
+   "path": "papers/unit1-good-habits-quiz-paper.html",
+   "ver": 1
   }
  ]
 }
