@@ -164,8 +164,30 @@ function qCorrect(i){
 }
 function confirmSubmit(){
   var left=0; for(var i=0;i<QUIZ.length;i++) if(!isDone(i)) left++;
-  var msg = left>0 ? '还有 '+left+' 道题没做，确定要交卷吗？' : '确定交卷吗？';
-  if(confirm(msg)) doSubmit();
+  var msg = left>0 ? '还有 '+left+' 道题没做，确定要交卷吗？' : '确定要交卷吗？';
+  var bar = document.getElementById('cfbar');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'cfbar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#fff8ec;border-top:3px solid #e8a33d;padding:16px;text-align:center;box-shadow:0 -3px 12px rgba(0,0,0,.18)';
+    var t = document.createElement('div');
+    t.id = 'cfmsg';
+    t.style.cssText = 'font-size:1.05rem;margin-bottom:12px;color:#5a4632';
+    bar.appendChild(t);
+    var b1 = document.createElement('button');
+    b1.textContent = '再检查一下';
+    b1.style.cssText = 'font-size:1rem;padding:10px 20px;margin-right:14px;border-radius:10px;border:1.5px solid #c9b18c;background:#fff;color:#5a4632';
+    b1.onclick = function(){ bar.style.display = 'none'; };
+    bar.appendChild(b1);
+    var b2 = document.createElement('button');
+    b2.textContent = '确定交卷 ✓';
+    b2.style.cssText = 'font-size:1rem;padding:10px 20px;border-radius:10px;border:none;background:#e8a33d;color:#fff;font-weight:bold';
+    b2.onclick = function(){ bar.style.display = 'none'; doSubmit(); };
+    bar.appendChild(b2);
+    document.body.appendChild(bar);
+  }
+  document.getElementById('cfmsg').textContent = msg;
+  bar.style.display = 'block';
 }
 function doSubmit(){
   submitted=true; timerOn=false;
@@ -194,31 +216,6 @@ function doSubmit(){
   window.scrollTo(0,0);
 }
 render();
-</script>
-
-<script>
-/* __WRONG_REPORT_INJECTED__ */
-var PAPER_META = {id: "unit1-good-habits-paper", unit: "Unit 1", title: "Unit 1 Good habits 单元测试卷"};
-(function(){
-  if (typeof doSubmit !== 'function') return;
-  var orig = doSubmit;
-  window.doSubmit = function(){
-    orig();
-    try {
-      if (!(window.Shelf && Shelf.reportWrong)) return;
-      var wrong = [];
-      QUIZ.forEach(function(q, i){
-        if (qCorrect(i)) return;
-        var mine, right;
-        if (q.type === 'choice'){ mine = (ans[i]===null||ans[i]===undefined)?'（未作答）':q.options[ans[i]]; right = q.options[q.answer]; }
-        else if (q.type === 'fill'){ mine = (ans[i]&&String(ans[i]).trim())?ans[i]:'（未作答）'; right = q.answers.join(' / '); }
-        else { mine = (ans[i]&&ans[i].length)?ans[i].map(function(wi){return q.words[wi];}).join(' '):'（未作答）'; right = q.answer; }
-        wrong.push({no: i+1, type: q.type, stem: q.q, options: q.options || null, words: q.words || null, mine: String(mine), right: String(right), exp: q.exp || ''});
-      });
-      Shelf.reportWrong(JSON.stringify({paper: PAPER_META.id, unit: PAPER_META.unit, title: PAPER_META.title, wrong: wrong}));
-    } catch(e){}
-  };
-})();
 </script>
 </body>
 </html>
