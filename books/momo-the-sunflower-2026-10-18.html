@@ -181,7 +181,7 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
-<!-- __FOLLOWREAD_V5__ -->
+<!-- __FOLLOWREAD_V6__ -->
 <div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
   <div id="frScoreMode">
     <button id="frBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎤 按住跟读，松手出分</button>
@@ -408,7 +408,7 @@ render();
     if (!window.Shelf || !Shelf.uploadRecForScore) return;
     var b = $('frScoreBtn');
     b.disabled = true; b.textContent = '📤 正在交上去…';
-    try { Shelf.uploadRecForScore(frBookBase(), window.i, frText()); }
+    try { Shelf.uploadRecForScore(frBookBase(), window.i, frTarget()); }
     catch(e){ window.onScoreUploadFailed(); }
   };
   window.onScoreUploaded = function(reqName){
@@ -473,6 +473,7 @@ render();
   frBindHold($('frRecBtn'), window.frRecStart, window.frRecStop);
 })();
 </script>
+
 
 
 
