@@ -1,0 +1,31 @@
+{
+ "book": "leo-the-red-panda-2026-11-08-fr8",
+ "page": 0,
+ "score": 80,
+ "stars": 2,
+ "heard": "Now, the little red panda.",
+ "marks": [
+  {
+   "w": "leo",
+   "ok": false
+  },
+  {
+   "w": "the",
+   "ok": true
+  },
+  {
+   "w": "little",
+   "ok": true
+  },
+  {
+   "w": "red",
+   "ok": true
+  },
+  {
+   "w": "panda",
+   "ok": true
+  }
+ ],
+ "target": "Leo the Little Red Panda.",
+ "ts": 1794134237240
+}
