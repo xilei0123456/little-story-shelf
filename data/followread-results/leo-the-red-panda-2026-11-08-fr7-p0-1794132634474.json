@@ -1,0 +1,31 @@
+{
+ "book": "leo-the-red-panda-2026-11-08-fr7",
+ "page": 0,
+ "score": 40,
+ "stars": 0,
+ "heard": "There, the little right hand up.",
+ "marks": [
+  {
+   "w": "leo",
+   "ok": false
+  },
+  {
+   "w": "the",
+   "ok": true
+  },
+  {
+   "w": "little",
+   "ok": true
+  },
+  {
+   "w": "red",
+   "ok": false
+  },
+  {
+   "w": "panda",
+   "ok": false
+  }
+ ],
+ "target": "Leo the Little Red Panda.",
+ "ts": 1794132634474
+}
