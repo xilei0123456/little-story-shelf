@@ -181,7 +181,7 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
-<!-- __FOLLOWREAD_V3__ -->
+<!-- __FOLLOWREAD_V4__ -->
 <div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
   <div id="frScoreMode">
     <button id="frBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎤 按住跟读，松手出分</button>
@@ -193,6 +193,8 @@ render();
     <div style="font-size:14px;color:#8a6d3b;">这台手机的自动评分用不了，咱们用录音模式，一样能练 🎧</div>
     <div style="margin-top:8px;">
       <button id="frRecBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎙 按住录音，松手停</button>
+    </div>
+    <div style="margin-top:12px;">
       <button id="frPlayBtn" onclick="frPlay()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#2f9e44;color:#fff;font-weight:700;">▶️ 听回放</button>
     </div>
     <div id="frRecOut" style="font-size:15px;color:#8a6d3b;margin-top:6px;"></div>
@@ -225,12 +227,23 @@ render();
     try { b = parseInt(localStorage.getItem(frBestKey()) || '0', 10) || 0; } catch(e){}
     el.textContent = b > 0 ? ('本页最佳 ' + '⭐'.repeat(b)) : '';
   }
+  var frLastPage = -1;
   setInterval(function(){
     var bar = $('frBar'); if (!bar) return;
     var show = false;
     try { show = (window.stage === 'story'); } catch(e){}
     bar.style.display = show ? '' : 'none';
     if (show) frShowBest();
+    try {
+      if (window.i !== frLastPage){
+        if (frLastPage !== -1 && !frHolding && !frRecHolding){
+          $('frOut').innerHTML = '';
+          $('frPlayBtn').style.display = 'none';
+          $('frRecOut').textContent = '';
+        }
+        frLastPage = window.i;
+      }
+    } catch(e){}
   }, 600);
   function frToRecMode(){
     $('frScoreMode').style.display = 'none';
@@ -258,7 +271,7 @@ render();
     frResetBtn();
     try { localStorage.setItem('fr_mode', 'rec'); } catch(e){}
     frToRecMode();
-    $('frRecOut').textContent = '自动评分喊不动，已经换成录音模式啦，点「开始录音」读给我听 🎧';
+    $('frRecOut').textContent = '自动评分喊不动，已经换成录音模式啦，按住按钮读给我听 🎧';
   }
   window.frTryScore = function(){
     try { localStorage.removeItem('fr_mode'); } catch(e){}
@@ -358,6 +371,8 @@ render();
     if (frRecHolding) return;
     if (!window.Shelf || !Shelf.startRecOnly) return;
     frRecHolding = true;
+    $('frPlayBtn').style.display = 'none';
+    $('frRecOut').textContent = '';
     frPending = 'rec';
     try { Shelf.startRecOnly(); } catch(e){ frRecHolding = false; }
   };
@@ -392,6 +407,7 @@ render();
   frBindHold($('frRecBtn'), window.frRecStart, window.frRecStop);
 })();
 </script>
+
 
 
 
