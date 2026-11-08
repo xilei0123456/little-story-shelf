@@ -181,19 +181,18 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
-<!-- __FOLLOWREAD_V2__ -->
+<!-- __FOLLOWREAD_V3__ -->
 <div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
   <div id="frScoreMode">
-    <button id="frBtn" onclick="frStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎤 跟读这一页</button>
-    <button id="frStop" onclick="frStop()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#e8590c;color:#fff;font-weight:700;">⏹ 读完啦</button>
+    <button id="frBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎤 按住跟读，松手出分</button>
+    <div style="font-size:12.5px;color:#b39b7d;margin-top:4px;">按住按钮把这页读出来，读完松手</div>
     <div id="frBest" style="font-size:13px;color:#b39b7d;margin-top:6px;"></div>
     <div id="frOut" style="font-size:17px;line-height:1.7;margin-top:6px;"></div>
   </div>
   <div id="frRecMode" style="display:none;">
     <div style="font-size:14px;color:#8a6d3b;">这台手机的自动评分用不了，咱们用录音模式，一样能练 🎧</div>
     <div style="margin-top:8px;">
-      <button id="frRecBtn" onclick="frRecStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎙 开始录音</button>
-      <button id="frRecStop" onclick="frRecStop()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#e8590c;color:#fff;font-weight:700;">⏹ 停</button>
+      <button id="frRecBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎙 按住录音，松手停</button>
       <button id="frPlayBtn" onclick="frPlay()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#2f9e44;color:#fff;font-weight:700;">▶️ 听回放</button>
     </div>
     <div id="frRecOut" style="font-size:15px;color:#8a6d3b;margin-top:6px;"></div>
@@ -248,10 +247,12 @@ render();
   if (window.Shelf && (!canRec || prefRec)) frToRecMode();
 
   function frClearWatch(){ if (frWatch){ clearTimeout(frWatch); frWatch = null; } }
+  var frHolding = false, frHoldT = 0;
   function frResetBtn(){
     frClearWatch();
-    $('frBtn').style.display = ''; $('frBtn').disabled = false; $('frBtn').textContent = '🎤 跟读这一页';
-    $('frStop').style.display = 'none';
+    frHolding = false;
+    var b = $('frBtn');
+    b.disabled = false; b.textContent = '🎤 按住跟读，松手出分'; b.style.background = '#f08c2e';
   }
   function frFallback(){
     frResetBtn();
@@ -265,16 +266,28 @@ render();
     $('frOut').innerHTML = '<span style="color:#8a6d3b;">好，再点一次「🎤 跟读这一页」试试</span>';
   };
   window.frStart = function(){
+    if (frHolding) return;
     if (!window.Shelf || !Shelf.startFollowRead) return;
+    frHolding = true; frHoldT = Date.now();
     frPending = 'score';
-    $('frBtn').disabled = true; $('frBtn').textContent = '👂 正在听，大声读出来…';
-    $('frStop').style.display = '';
+    var b = $('frBtn');
+    b.textContent = '🔴 正在听…松手出分'; b.style.background = '#e8590c';
     $('frOut').innerHTML = '';
     try { Shelf.startFollowRead(); } catch(e){ frResetBtn(); return; }
     frClearWatch();
-    frWatch = setTimeout(frFallback, 14000);
+    frWatch = setTimeout(frFallback, 30000);
   };
   window.frStop = function(){
+    if (!frHolding) return;
+    frHolding = false;
+    var b = $('frBtn');
+    b.textContent = '🎤 按住跟读，松手出分'; b.style.background = '#f08c2e';
+    if (Date.now() - frHoldT < 500){
+      try { Shelf.stopFollowRead(); } catch(e){}
+      frClearWatch();
+      $('frOut').innerHTML = '<span style="color:#8a6d3b;">按住不放，把这页读完再松手哦 🙂</span>';
+      return;
+    }
     try { Shelf.stopFollowRead(); } catch(e){}
     $('frOut').innerHTML = '<span style="color:#8a6d3b;">正在算分，等一下…</span>';
     frClearWatch();
@@ -340,24 +353,46 @@ render();
     frShowBest();
   };
 
+  var frRecHolding = false;
   window.frRecStart = function(){
+    if (frRecHolding) return;
     if (!window.Shelf || !Shelf.startRecOnly) return;
+    frRecHolding = true;
     frPending = 'rec';
-    try { Shelf.startRecOnly(); } catch(e){}
+    try { Shelf.startRecOnly(); } catch(e){ frRecHolding = false; }
   };
-  window.frRecStop = function(){ try { Shelf.stopRecOnly(); } catch(e){} };
+  window.frRecStop = function(){
+    if (!frRecHolding) return;
+    frRecHolding = false;
+    try { Shelf.stopRecOnly(); } catch(e){}
+  };
   window.frPlay = function(){ try { Shelf.playRec(); } catch(e){} };
   window.onRecStarted = function(){
-    $('frRecBtn').style.display = 'none'; $('frRecStop').style.display = '';
-    $('frPlayBtn').style.display = 'none'; $('frRecOut').textContent = '🔴 录音中，读完点「停」';
+    var b = $('frRecBtn');
+    b.textContent = '🔴 录音中…松手停'; b.style.background = '#e8590c';
+    $('frPlayBtn').style.display = 'none'; $('frRecOut').textContent = '读完松手，就能听回放啦';
   };
   window.onRecStopped = function(){
-    $('frRecBtn').style.display = ''; $('frRecStop').style.display = 'none';
+    var b = $('frRecBtn');
+    b.textContent = '🎙 按住录音，松手停'; b.style.background = '#f08c2e';
     $('frPlayBtn').style.display = ''; $('frRecOut').textContent = '录好啦，点「听回放」听听自己读得怎么样 🎧';
   };
   window.onRecPlayEnd = function(){};
+  function frBindHold(el, down, up){
+    if (!el) return;
+    el.addEventListener('touchstart', function(e){ e.preventDefault(); down(); }, {passive:false});
+    el.addEventListener('touchend', function(e){ e.preventDefault(); up(); }, {passive:false});
+    el.addEventListener('touchcancel', function(){ up(); });
+    el.addEventListener('mousedown', function(){ down(); });
+    el.addEventListener('mouseup', function(){ up(); });
+    el.addEventListener('mouseleave', function(){ if (frHolding || frRecHolding) up(); });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+  frBindHold($('frBtn'), window.frStart, window.frStop);
+  frBindHold($('frRecBtn'), window.frRecStart, window.frRecStop);
 })();
 </script>
+
 
 
 </body>
