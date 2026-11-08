@@ -7,7 +7,7 @@
    "badge": "U4",
    "date": "2026-10-25",
    "path": "papers/unit4-keeping-safe-quiz-paper.html",
-   "ver": 4
+   "ver": 5
   },
   {
    "id": "unit3-hobbies-paper",
@@ -16,7 +16,7 @@
    "badge": "U3",
    "date": "2026-10-18",
    "path": "papers/unit3-hobbies-quiz-paper.html",
-   "ver": 4
+   "ver": 5
   },
   {
    "id": "unit2-i-feel-good-paper",
@@ -25,7 +25,7 @@
    "badge": "U2",
    "date": "2026-11-05",
    "path": "papers/unit2-i-feel-good-quiz-paper.html",
-   "ver": 3
+   "ver": 4
   },
   {
    "id": "unit1-good-habits-paper",
@@ -34,7 +34,7 @@
    "badge": "U1",
    "date": "2026-11-05",
    "path": "papers/unit1-good-habits-quiz-paper.html",
-   "ver": 3
+   "ver": 4
   }
  ]
 }

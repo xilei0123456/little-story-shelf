@@ -240,5 +240,30 @@ function doSubmit(){
 loadState();
 render();
 </script>
+
+<script>
+/* __WRONG_REPORT_INJECTED__ */
+var PAPER_META = {id: "unit4-safety-first-paper", unit: "Unit 4", title: "Unit 4 Safety first 单元测试卷"};
+(function(){
+  if (typeof doSubmit !== 'function') return;
+  var orig = doSubmit;
+  window.doSubmit = function(){
+    orig();
+    try {
+      if (!(window.Shelf && Shelf.reportWrong)) return;
+      var wrong = [];
+      QUIZ.forEach(function(q, i){
+        if (qCorrect(i)) return;
+        var mine, right;
+        if (q.type === 'choice'){ mine = (ans[i]===null||ans[i]===undefined)?'（未作答）':q.options[ans[i]]; right = q.options[q.answer]; }
+        else if (q.type === 'fill'){ mine = (ans[i]&&String(ans[i]).trim())?ans[i]:'（未作答）'; right = q.answers.join(' / '); }
+        else { mine = (ans[i]&&ans[i].length)?ans[i].map(function(wi){return q.words[wi];}).join(' '):'（未作答）'; right = q.answer; }
+        wrong.push({no: i+1, type: q.type, stem: q.q, options: q.options || null, words: q.words || null, mine: String(mine), right: String(right), exp: q.exp || ''});
+      });
+      Shelf.reportWrong(JSON.stringify({paper: PAPER_META.id, unit: PAPER_META.unit, title: PAPER_META.title, wrong: wrong}));
+    } catch(e){}
+  };
+})();
+</script>
 </body>
 </html>
