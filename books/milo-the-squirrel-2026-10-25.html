@@ -181,7 +181,7 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
-<!-- __FOLLOWREAD_V1__ -->
+<!-- __FOLLOWREAD_V2__ -->
 <div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
   <div id="frScoreMode">
     <button id="frBtn" onclick="frStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎤 跟读这一页</button>
@@ -190,19 +190,20 @@ render();
     <div id="frOut" style="font-size:17px;line-height:1.7;margin-top:6px;"></div>
   </div>
   <div id="frRecMode" style="display:none;">
-    <div style="font-size:14px;color:#8a6d3b;">这台手机不能自动评分，可以录下来自己听哦 🎧</div>
+    <div style="font-size:14px;color:#8a6d3b;">这台手机的自动评分用不了，咱们用录音模式，一样能练 🎧</div>
     <div style="margin-top:8px;">
       <button id="frRecBtn" onclick="frRecStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎙 开始录音</button>
       <button id="frRecStop" onclick="frRecStop()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#e8590c;color:#fff;font-weight:700;">⏹ 停</button>
       <button id="frPlayBtn" onclick="frPlay()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#2f9e44;color:#fff;font-weight:700;">▶️ 听回放</button>
     </div>
     <div id="frRecOut" style="font-size:15px;color:#8a6d3b;margin-top:6px;"></div>
+    <div style="margin-top:6px;"><a href="javascript:void(0)" onclick="frTryScore()" style="font-size:13px;color:#b39b7d;">再试试自动评分</a></div>
   </div>
 </div>
 <script>
 (function(){
   function $(id){ return document.getElementById(id); }
-  var frTimer = null, frPending = '';
+  var frWatch = null, frPending = '';
   var EXPAND = {"don't":"do not","doesn't":"does not","can't":"can not","won't":"will not","it's":"it is","i'm":"i am","you're":"you are","we're":"we are","he's":"he is","she's":"she is","that's":"that is","let's":"let us","isn't":"is not","aren't":"are not","didn't":"did not","what's":"what is","there's":"there is","isnt":"is not","dont":"do not","cant":"can not"};
   function frTokens(s){
     s = (s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -232,25 +233,53 @@ render();
     bar.style.display = show ? '' : 'none';
     if (show) frShowBest();
   }, 600);
+  function frToRecMode(){
+    $('frScoreMode').style.display = 'none';
+    $('frRecMode').style.display = '';
+  }
+  function frToScoreMode(){
+    $('frRecMode').style.display = 'none';
+    $('frScoreMode').style.display = '';
+  }
   var canRec = false;
   try { canRec = !!window.Shelf && !!Shelf.recAvailable && !!Shelf.recAvailable(); } catch(e){}
-  if (!canRec && window.Shelf) { $('frScoreMode').style.display = 'none'; $('frRecMode').style.display = ''; }
+  var prefRec = false;
+  try { prefRec = localStorage.getItem('fr_mode') === 'rec'; } catch(e){}
+  if (window.Shelf && (!canRec || prefRec)) frToRecMode();
 
+  function frClearWatch(){ if (frWatch){ clearTimeout(frWatch); frWatch = null; } }
   function frResetBtn(){
-    if (frTimer){ clearTimeout(frTimer); frTimer = null; }
+    frClearWatch();
     $('frBtn').style.display = ''; $('frBtn').disabled = false; $('frBtn').textContent = '🎤 跟读这一页';
     $('frStop').style.display = 'none';
   }
+  function frFallback(){
+    frResetBtn();
+    try { localStorage.setItem('fr_mode', 'rec'); } catch(e){}
+    frToRecMode();
+    $('frRecOut').textContent = '自动评分喊不动，已经换成录音模式啦，点「开始录音」读给我听 🎧';
+  }
+  window.frTryScore = function(){
+    try { localStorage.removeItem('fr_mode'); } catch(e){}
+    frToScoreMode();
+    $('frOut').innerHTML = '<span style="color:#8a6d3b;">好，再点一次「🎤 跟读这一页」试试</span>';
+  };
   window.frStart = function(){
     if (!window.Shelf || !Shelf.startFollowRead) return;
     frPending = 'score';
     $('frBtn').disabled = true; $('frBtn').textContent = '👂 正在听，大声读出来…';
     $('frStop').style.display = '';
     $('frOut').innerHTML = '';
-    try { Shelf.startFollowRead(); } catch(e){ frResetBtn(); }
-    frTimer = setTimeout(function(){ frResetBtn(); $('frOut').innerHTML = '<span style="color:#e8590c;">没听清，再读一次试试 🙂</span>'; }, 25000);
+    try { Shelf.startFollowRead(); } catch(e){ frResetBtn(); return; }
+    frClearWatch();
+    frWatch = setTimeout(frFallback, 14000);
   };
-  window.frStop = function(){ try { Shelf.stopFollowRead(); } catch(e){} };
+  window.frStop = function(){
+    try { Shelf.stopFollowRead(); } catch(e){}
+    $('frOut').innerHTML = '<span style="color:#8a6d3b;">正在算分，等一下…</span>';
+    frClearWatch();
+    frWatch = setTimeout(frFallback, 4000);
+  };
   window.onFollowListening = function(){};
   window.onMicPerm = function(granted){
     if (granted){
@@ -262,17 +291,13 @@ render();
     }
   };
   window.onFollowError = function(code){
-    if (code === 'unavailable'){
-      $('frScoreMode').style.display = 'none'; $('frRecMode').style.display = '';
-      frResetBtn();
-      return;
-    }
+    if (code === 'unavailable'){ frFallback(); return; }
     frResetBtn();
     if (code === 'perm'){
       $('frOut').innerHTML = '<span style="color:#e8590c;">点允许麦克风，就能开始跟读啦 🎤</span>';
       return;
     }
-    if (code === 'rec6' || code === 'rec7' || code === 'rec9' || code === 'rec2'){
+    if (code === 'rec6' || code === 'rec7' || code === 'rec2'){
       $('frOut').innerHTML = '<span style="color:#e8590c;">没听清，再大声读一次试试 🙂</span>';
       return;
     }
@@ -302,7 +327,7 @@ render();
         ? '<span style="color:#2f9e44;font-weight:700;">' + disp + '</span>'
         : '<span style="color:#e8590c;text-decoration:underline;">' + disp + '</span>';
     }).join(' ');
-    var pct = correct / n, stars = pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.45 ? 1 : 0;
+    var pct = n ? correct / n : 0, stars = pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.45 ? 1 : 0;
     var msg = stars === 3 ? '太棒了，读得真准！' : stars === 2 ? '读得很好！' : stars === 1 ? '不错，继续加油！' : '再试一次，你可以的！';
     try {
       var prev = parseInt(localStorage.getItem(frBestKey()) || '0', 10) || 0;
@@ -333,6 +358,7 @@ render();
   window.onRecPlayEnd = function(){};
 })();
 </script>
+
 
 </body>
 </html>
