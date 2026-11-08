@@ -181,5 +181,158 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
+<!-- __FOLLOWREAD_V1__ -->
+<div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
+  <div id="frScoreMode">
+    <button id="frBtn" onclick="frStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎤 跟读这一页</button>
+    <button id="frStop" onclick="frStop()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#e8590c;color:#fff;font-weight:700;">⏹ 读完啦</button>
+    <div id="frBest" style="font-size:13px;color:#b39b7d;margin-top:6px;"></div>
+    <div id="frOut" style="font-size:17px;line-height:1.7;margin-top:6px;"></div>
+  </div>
+  <div id="frRecMode" style="display:none;">
+    <div style="font-size:14px;color:#8a6d3b;">这台手机不能自动评分，可以录下来自己听哦 🎧</div>
+    <div style="margin-top:8px;">
+      <button id="frRecBtn" onclick="frRecStart()" style="font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;">🎙 开始录音</button>
+      <button id="frRecStop" onclick="frRecStop()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#e8590c;color:#fff;font-weight:700;">⏹ 停</button>
+      <button id="frPlayBtn" onclick="frPlay()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#2f9e44;color:#fff;font-weight:700;">▶️ 听回放</button>
+    </div>
+    <div id="frRecOut" style="font-size:15px;color:#8a6d3b;margin-top:6px;"></div>
+  </div>
+</div>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  var frTimer = null, frPending = '';
+  var EXPAND = {"don't":"do not","doesn't":"does not","can't":"can not","won't":"will not","it's":"it is","i'm":"i am","you're":"you are","we're":"we are","he's":"he is","she's":"she is","that's":"that is","let's":"let us","isn't":"is not","aren't":"are not","didn't":"did not","what's":"what is","there's":"there is","isnt":"is not","dont":"do not","cant":"can not"};
+  function frTokens(s){
+    s = (s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' ]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!s) return [];
+    var out = [];
+    s.split(' ').forEach(function(w){
+      if (EXPAND[w]) EXPAND[w].split(' ').forEach(function(x){ out.push(x); });
+      else out.push(w.replace(/'/g, ''));
+    });
+    return out.filter(function(w){ return w.length; });
+  }
+  function frTarget(){
+    try { if (window.PAGES && window.PAGES[window.i]) return window.PAGES[window.i].en || ''; } catch(e){}
+    return '';
+  }
+  function frBestKey(){ return 'frbest_v1_' + location.pathname + '_' + (window.i || 0); }
+  function frShowBest(){
+    var el = $('frBest'); if (!el) return;
+    var b = 0;
+    try { b = parseInt(localStorage.getItem(frBestKey()) || '0', 10) || 0; } catch(e){}
+    el.textContent = b > 0 ? ('本页最佳 ' + '⭐'.repeat(b)) : '';
+  }
+  setInterval(function(){
+    var bar = $('frBar'); if (!bar) return;
+    var show = false;
+    try { show = (window.stage === 'story'); } catch(e){}
+    bar.style.display = show ? '' : 'none';
+    if (show) frShowBest();
+  }, 600);
+  var canRec = false;
+  try { canRec = !!window.Shelf && !!Shelf.recAvailable && !!Shelf.recAvailable(); } catch(e){}
+  if (!canRec && window.Shelf) { $('frScoreMode').style.display = 'none'; $('frRecMode').style.display = ''; }
+
+  function frResetBtn(){
+    if (frTimer){ clearTimeout(frTimer); frTimer = null; }
+    $('frBtn').style.display = ''; $('frBtn').disabled = false; $('frBtn').textContent = '🎤 跟读这一页';
+    $('frStop').style.display = 'none';
+  }
+  window.frStart = function(){
+    if (!window.Shelf || !Shelf.startFollowRead) return;
+    frPending = 'score';
+    $('frBtn').disabled = true; $('frBtn').textContent = '👂 正在听，大声读出来…';
+    $('frStop').style.display = '';
+    $('frOut').innerHTML = '';
+    try { Shelf.startFollowRead(); } catch(e){ frResetBtn(); }
+    frTimer = setTimeout(function(){ frResetBtn(); $('frOut').innerHTML = '<span style="color:#e8590c;">没听清，再读一次试试 🙂</span>'; }, 25000);
+  };
+  window.frStop = function(){ try { Shelf.stopFollowRead(); } catch(e){} };
+  window.onFollowListening = function(){};
+  window.onMicPerm = function(granted){
+    if (granted){
+      if (frPending === 'rec') frRecStart(); else frStart();
+    } else {
+      frResetBtn();
+      $('frOut').innerHTML = '<span style="color:#e8590c;">要用麦克风才能跟读哦，去设置里允许一下 🙏</span>';
+      var ro = $('frRecOut'); if (ro) ro.textContent = '要用麦克风才能录音哦，去设置里允许一下 🙏';
+    }
+  };
+  window.onFollowError = function(code){
+    if (code === 'unavailable'){
+      $('frScoreMode').style.display = 'none'; $('frRecMode').style.display = '';
+      frResetBtn();
+      return;
+    }
+    frResetBtn();
+    if (code === 'perm'){
+      $('frOut').innerHTML = '<span style="color:#e8590c;">点允许麦克风，就能开始跟读啦 🎤</span>';
+      return;
+    }
+    if (code === 'rec6' || code === 'rec7' || code === 'rec9' || code === 'rec2'){
+      $('frOut').innerHTML = '<span style="color:#e8590c;">没听清，再大声读一次试试 🙂</span>';
+      return;
+    }
+    $('frOut').innerHTML = '<span style="color:#e8590c;">这次没成功，再点一次试试 🙂</span>';
+  };
+  window.onFollowResult = function(text){
+    frResetBtn();
+    var target = frTarget();
+    var tt = frTokens(target), st = frTokens(text);
+    var n = tt.length, m = st.length;
+    if (!n){ $('frOut').innerHTML = ''; return; }
+    var dp = [], a, b;
+    for (a = 0; a <= n; a++){ dp.push([0]); }
+    for (b = 1; b <= m; b++) dp[0].push(0);
+    for (a = 1; a <= n; a++) for (b = 1; b <= m; b++)
+      dp[a][b] = tt[a-1] === st[b-1] ? dp[a-1][b-1] + 1 : Math.max(dp[a-1][b], dp[a][b-1]);
+    var matched = {}, x = n, y = m;
+    while (x > 0 && y > 0){
+      if (tt[x-1] === st[y-1]){ matched[x-1] = 1; x--; y--; }
+      else if (dp[x-1][y] >= dp[x][y-1]) x--; else y--;
+    }
+    var correct = dp[n][m];
+    var dispWords = target.replace(/[‘’]/g, "'").split(/\s+/).filter(function(w){ return w.length; });
+    var html = tt.map(function(w, idx){
+      var disp = dispWords[Math.min(idx, dispWords.length - 1)] || w;
+      return matched[idx]
+        ? '<span style="color:#2f9e44;font-weight:700;">' + disp + '</span>'
+        : '<span style="color:#e8590c;text-decoration:underline;">' + disp + '</span>';
+    }).join(' ');
+    var pct = correct / n, stars = pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.45 ? 1 : 0;
+    var msg = stars === 3 ? '太棒了，读得真准！' : stars === 2 ? '读得很好！' : stars === 1 ? '不错，继续加油！' : '再试一次，你可以的！';
+    try {
+      var prev = parseInt(localStorage.getItem(frBestKey()) || '0', 10) || 0;
+      if (stars > prev) localStorage.setItem(frBestKey(), String(stars));
+    } catch(e){}
+    $('frOut').innerHTML =
+      '<div style="font-size:22px;">' + (stars ? '⭐'.repeat(stars) : '💪') + ' <b>' + msg + '</b></div>' +
+      '<div style="margin-top:4px;">' + html + '</div>' +
+      '<div style="font-size:13px;color:#b39b7d;margin-top:4px;">读对了 ' + correct + ' / ' + n + ' 个词 · 手机听到的是：' + (text || '') + '</div>';
+    frShowBest();
+  };
+
+  window.frRecStart = function(){
+    if (!window.Shelf || !Shelf.startRecOnly) return;
+    frPending = 'rec';
+    try { Shelf.startRecOnly(); } catch(e){}
+  };
+  window.frRecStop = function(){ try { Shelf.stopRecOnly(); } catch(e){} };
+  window.frPlay = function(){ try { Shelf.playRec(); } catch(e){} };
+  window.onRecStarted = function(){
+    $('frRecBtn').style.display = 'none'; $('frRecStop').style.display = '';
+    $('frPlayBtn').style.display = 'none'; $('frRecOut').textContent = '🔴 录音中，读完点「停」';
+  };
+  window.onRecStopped = function(){
+    $('frRecBtn').style.display = ''; $('frRecStop').style.display = 'none';
+    $('frPlayBtn').style.display = ''; $('frRecOut').textContent = '录好啦，点「听回放」听听自己读得怎么样 🎧';
+  };
+  window.onRecPlayEnd = function(){};
+})();
+</script>
+
 </body>
 </html>
