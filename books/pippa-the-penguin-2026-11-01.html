@@ -181,7 +181,7 @@ document.getElementById('prev').addEventListener('click', function(){
 });
 render();
 </script>
-<!-- __FOLLOWREAD_V4__ -->
+<!-- __FOLLOWREAD_V5__ -->
 <div id="frBar" style="display:none;margin:14px auto 6px;max-width:92%;background:#fff8ec;border:1.5px solid #f0c929;border-radius:16px;padding:12px 14px;text-align:center;font-family:inherit;">
   <div id="frScoreMode">
     <button id="frBtn" style="font-size:18px;padding:12px 26px;border:none;border-radius:999px;background:#f08c2e;color:#fff;font-weight:700;touch-action:none;-webkit-touch-callout:none;user-select:none;">🎤 按住跟读，松手出分</button>
@@ -196,6 +196,9 @@ render();
     </div>
     <div style="margin-top:12px;">
       <button id="frPlayBtn" onclick="frPlay()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#2f9e44;color:#fff;font-weight:700;">▶️ 听回放</button>
+    </div>
+    <div style="margin-top:10px;">
+      <button id="frScoreBtn" onclick="frScore()" style="display:none;font-size:18px;padding:10px 22px;border:none;border-radius:999px;background:#9775fa;color:#fff;font-weight:700;">📤 交给红豆评分</button>
     </div>
     <div id="frRecOut" style="font-size:15px;color:#8a6d3b;margin-top:6px;"></div>
     <div style="margin-top:6px;"><a href="javascript:void(0)" onclick="frTryScore()" style="font-size:13px;color:#b39b7d;">再试试自动评分</a></div>
@@ -239,6 +242,7 @@ render();
         if (frLastPage !== -1 && !frHolding && !frRecHolding){
           $('frOut').innerHTML = '';
           $('frPlayBtn').style.display = 'none';
+          $('frScoreBtn').style.display = 'none';
           $('frRecOut').textContent = '';
         }
         frLastPage = window.i;
@@ -372,6 +376,7 @@ render();
     if (!window.Shelf || !Shelf.startRecOnly) return;
     frRecHolding = true;
     $('frPlayBtn').style.display = 'none';
+    $('frScoreBtn').style.display = 'none';
     $('frRecOut').textContent = '';
     frPending = 'rec';
     try { Shelf.startRecOnly(); } catch(e){ frRecHolding = false; }
@@ -390,9 +395,70 @@ render();
   window.onRecStopped = function(){
     var b = $('frRecBtn');
     b.textContent = '🎙 按住录音，松手停'; b.style.background = '#f08c2e';
-    $('frPlayBtn').style.display = ''; $('frRecOut').textContent = '录好啦，点「听回放」听听自己读得怎么样 🎧';
+    $('frPlayBtn').style.display = '';
+    if (window.Shelf && Shelf.uploadRecForScore) $('frScoreBtn').style.display = '';
+    $('frRecOut').textContent = '录好啦，点「听回放」听听自己读得怎么样 🎧';
   };
   window.onRecPlayEnd = function(){};
+  function frBookBase(){
+    try { return location.pathname.split('/').pop().replace(/\.html$/, ''); } catch(e){ return 'book'; }
+  }
+  function frPendingKey(){ return 'frcloud_' + frBookBase() + '_' + window.i; }
+  window.frScore = function(){
+    if (!window.Shelf || !Shelf.uploadRecForScore) return;
+    var b = $('frScoreBtn');
+    b.disabled = true; b.textContent = '📤 正在交上去…';
+    try { Shelf.uploadRecForScore(frBookBase(), window.i, frText()); }
+    catch(e){ window.onScoreUploadFailed(); }
+  };
+  window.onScoreUploaded = function(reqName){
+    try { localStorage.setItem(frPendingKey(), reqName + '|' + Date.now()); } catch(e){}
+    var b = $('frScoreBtn');
+    b.style.display = 'none'; b.disabled = false; b.textContent = '📤 交给红豆评分';
+    $('frRecOut').textContent = '交上去啦 📬 红豆批完，分数会自动回到这一页（大概几分钟）';
+    frPollCloud();
+  };
+  window.onScoreUploadFailed = function(){
+    var b = $('frScoreBtn');
+    b.disabled = false; b.textContent = '📤 交给红豆评分';
+    $('frRecOut').textContent = '没交上去，检查一下网络再点一次 📤';
+  };
+  var frPollBusy = false;
+  function frPollCloud(){
+    if (frPollBusy) return;
+    var raw = null;
+    try { raw = localStorage.getItem(frPendingKey()); } catch(e){}
+    if (!raw) return;
+    var parts = raw.split('|');
+    var reqName = parts[0];
+    var sentAt = parseInt(parts[1] || '0', 10);
+    if (sentAt && Date.now() - sentAt > 2 * 3600 * 1000){
+      try { localStorage.removeItem(frPendingKey()); } catch(e){}
+      return;
+    }
+    frPollBusy = true;
+    fetch('https://raw.githubusercontent.com/xilei0123456/little-story-shelf/main/data/followread-results/' + reqName + '?t=' + Date.now())
+      .then(function(r){ if (!r.ok) throw new Error('nf'); return r.json(); })
+      .then(function(res){
+        frPollBusy = false;
+        try { localStorage.removeItem(frPendingKey()); } catch(e){}
+        if (res && typeof res.heard === 'string'){
+          frShowScore(res.heard);
+          var note = document.createElement('div');
+          note.style.cssText = 'font-size:13px;color:#9775fa;margin-top:4px;';
+          note.textContent = '☁️ 这是红豆刚批好的分数';
+          $('frOut').appendChild(note);
+        }
+      })
+      .catch(function(){ frPollBusy = false; });
+  }
+  var frTick = 0;
+  setInterval(function(){
+    frTick++;
+    if (frTick % 25 === 0) frPollCloud();
+  }, 600);
+  setTimeout(frPollCloud, 1500);
+
   function frBindHold(el, down, up){
     if (!el) return;
     el.addEventListener('touchstart', function(e){ e.preventDefault(); down(); }, {passive:false});
@@ -407,6 +473,7 @@ render();
   frBindHold($('frRecBtn'), window.frRecStart, window.frRecStop);
 })();
 </script>
+
 
 
 
