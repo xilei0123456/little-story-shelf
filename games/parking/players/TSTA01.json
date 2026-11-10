@@ -1,1 +1,1 @@
-{"code": "TSTA01", "name": "\u6d4b\u8bd5\u7532", "coins": 1000, "cars": [{"id": "c1", "key": "aotuo", "name": "\u5965\u62d3", "emoji": "\ud83d\ude97", "rate": 5, "parked": {"lot": "TSTB02", "spot": 0, "since": 1794311121148}}], "spots": [{"by": null}, {"by": null}, {"by": null}], "log": []}
+{"code": "TSTA01", "name": "\u6d4b\u8bd5\u7532", "coins": 1038, "cars": [{"id": "c1", "key": "aotuo", "name": "\u5965\u62d3", "emoji": "\ud83d\ude97", "rate": 5, "parked": null}], "spots": [{"by": null}, {"by": null}, {"by": null}], "log": []}
