@@ -438,6 +438,18 @@ async function reconcile(){
     }
     if (bad) { car.parked = null; try { await saveMe("parking: reconcile"); } catch(e){} }
   }
+  /* 反向自愈：正在看的好友车位里明明停着我的车、但我的记录没标停 → 按车位现状补上 */
+  if (typeof friend !== "undefined" && friend && friendCode) {
+    let dirty = false;
+    friend.spots.forEach((spot, idx) => {
+      if (!spot || spot.by !== me.code) return;
+      const car = me.cars.find(c => c.id === spot.carId);
+      if (!car) return;
+      const want = { lot: friendCode, spot: idx, since: spot.since };
+      if (JSON.stringify(car.parked) !== JSON.stringify(want)) { car.parked = want; dirty = true; }
+    });
+    if (dirty) { try { await saveMe("parking: reconcile reverse"); } catch(e){} }
+  }
 }
 
 /* ===== 动作包装（带忙碌保护） ===== */
@@ -453,7 +465,7 @@ async function visitFriend(code){
   code = (code||"").trim().toUpperCase();
   if (!code) { toast("先输好友代码"); return; }
   if (code === me.code) { toast("这是你自己的代码啦"); return; }
-  if (await loadFriend(code)) { $("friendListWrap").classList.add("hidden"); render(); }
+  if (await loadFriend(code)) { $("friendListWrap").classList.add("hidden"); await reconcile(); render(); }
   else toast("没找到这个代码的车场，核对一下");
 }
 
@@ -485,12 +497,12 @@ $("meCode").addEventListener("click", ()=>{
     else { $("viewCreate").classList.remove("hidden"); }
   } catch(e) { $("viewCreate").classList.remove("hidden"); }
   setInterval(async ()=>{
-    if (!me) return;
+    if (!me || busy) return;
     try {
       const keepFriend = friendCode;
       await loadMe();
-      await reconcile();
       if (keepFriend && tab==="Friend") await loadFriend(keepFriend);
+      await reconcile();
       render();
     } catch(e){}
   }, 20000);
