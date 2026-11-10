@@ -412,6 +412,24 @@ function renderLog(){
     : '<p class="hint">还没有动态，去好友家停个车吧。</p>';
 }
 
+/* ===== 状态自愈：车标记停在某车位、但那个车位里不是我的车 → 自动把车接回家 ===== */
+async function reconcile(){
+  if (!me) return;
+  for (const car of me.cars) {
+    if (!car.parked) continue;
+    let bad = false;
+    if (car.parked.lot === me.code) bad = true;
+    else {
+      try {
+        const got = await ghGet(PDIR+car.parked.lot+".json");
+        const spot = got ? got.data.spots[car.parked.spot] : null;
+        if (!spot || spot.by !== me.code || spot.carId !== car.id) bad = true;
+      } catch(e) { /* 网络问题不处理，下轮再查 */ }
+    }
+    if (bad) { car.parked = null; try { await saveMe("parking: reconcile"); } catch(e){} }
+  }
+}
+
 /* ===== 动作包装（带忙碌保护） ===== */
 let busy = false;
 async function guard(fn){ if (busy) return; busy = true; try { await fn(); } catch(e) { toast("网络有点问题，再试一次"); } busy = false; }
@@ -453,7 +471,7 @@ $("meCode").addEventListener("click", ()=>{
 /* ===== 启动与定时刷新 ===== */
 (async function init(){
   try {
-    if (await loadMe()) showApp();
+    if (await loadMe()) { await reconcile(); showApp(); }
     else { $("viewCreate").classList.remove("hidden"); }
   } catch(e) { $("viewCreate").classList.remove("hidden"); }
   setInterval(async ()=>{
@@ -461,6 +479,7 @@ $("meCode").addEventListener("click", ()=>{
     try {
       const keepFriend = friendCode;
       await loadMe();
+      await reconcile();
       if (keepFriend && tab==="Friend") await loadFriend(keepFriend);
       render();
     } catch(e){}
