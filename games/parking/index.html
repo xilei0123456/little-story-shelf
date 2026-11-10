@@ -68,6 +68,14 @@
       <input type="text" id="nickInput" maxlength="10" placeholder="比如：红豆">
       <div style="height:10px"></div>
       <button class="btn-main btn-big" id="createBtn">🎉 创建我的车场</button>
+      <div style="height:16px"></div>
+      <div style="border-top:1px dashed #f0dcbc;padding-top:12px;">
+        <div style="font-weight:700;margin-bottom:6px;">以前玩过？用代码找回车场</div>
+        <p class="hint" style="margin-bottom:8px;">换手机、换浏览器、装了 App 版，都输你原来的 6 位代码就能回到自己的车场。</p>
+        <input type="text" id="recoverInput" maxlength="6" placeholder="你的 6 位代码" style="text-transform:uppercase;">
+        <div style="height:8px"></div>
+        <button class="btn-blue btn-big" id="recoverBtn">🔑 找回我的车场</button>
+      </div>
     </div>
   </section>
 
@@ -426,6 +434,16 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
   b.addEventListener("click", ()=>{ tab = b.dataset.tab; if (tab!=="Friend") { /* 保留 friend 状态 */ } render(); });
 });
 $("createBtn").addEventListener("click", ()=>guard(createPlayer));
+$("recoverBtn").addEventListener("click", ()=>guard(async ()=>{
+  const code = $("recoverInput").value.trim().toUpperCase();
+  if (!code) { toast("先输你的代码"); return; }
+  const got = await ghGet(PDIR+code+".json");
+  if (!got) { toast("没找到这个代码的车场，核对一下"); return; }
+  localStorage.setItem("parking_code", code);
+  me = got.data; meSha = got.sha;
+  toast("🎉 欢迎回来，" + me.name + "！");
+  showApp();
+}));
 $("visitBtn").addEventListener("click", ()=>guard(()=>visitFriend($("friendCodeInput").value)));
 $("backFriendsBtn").addEventListener("click", ()=>{ friend=null; $("friendLotWrap").classList.add("hidden"); $("friendListWrap").classList.remove("hidden"); render(); });
 $("meCode").addEventListener("click", ()=>{
