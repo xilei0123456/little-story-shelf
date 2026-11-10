@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>抢车位 · 和好友一起玩</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#fdf6ec; color:#333; padding-bottom:86px; }
+  header { background:linear-gradient(135deg,#ff9a56,#ff6b6b); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .title { font-size:20px; font-weight:800; letter-spacing:1px; }
+  header .sub { font-size:12px; opacity:.92; margin-top:2px; }
+  header .me { display:flex; justify-content:space-between; align-items:center; margin-top:10px; background:rgba(255,255,255,.18); border-radius:10px; padding:8px 12px; }
+  header .me .who { font-size:14px; font-weight:700; }
+  header .me .code { font-size:11px; opacity:.9; }
+  header .coins { font-size:18px; font-weight:800; }
+  main { padding:12px; max-width:560px; margin:0 auto; }
+  h3.sec { font-size:15px; margin:16px 2px 8px; color:#b3541e; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .spot { background:#fff; border:2px dashed #e0c9a6; border-radius:12px; min-height:104px; padding:8px 6px; text-align:center; display:flex; flex-direction:column; justify-content:center; gap:3px; }
+  .spot.occupied { border-style:solid; border-color:#ffb26b; background:#fff8ef; }
+  .spot .car-emoji { font-size:30px; line-height:1; }
+  .spot .empty { font-size:26px; color:#d8c7ab; }
+  .spot .nm { font-size:12px; font-weight:700; }
+  .spot .info { font-size:11px; color:#888; }
+  .spot .earn { font-size:12px; color:#e67e22; font-weight:700; }
+  button { border:none; border-radius:9px; padding:7px 10px; font-size:13px; font-weight:700; cursor:pointer; }
+  button:active { transform:scale(.97); }
+  .btn-main { background:#ff6b6b; color:#fff; }
+  .btn-soft { background:#ffe3c2; color:#b3541e; }
+  .btn-blue { background:#4dabf7; color:#fff; }
+  .btn-grey { background:#eee; color:#999; }
+  .btn-big { width:100%; padding:12px; font-size:15px; border-radius:11px; }
+  .car-row, .shop-row, .friend-row { background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .car-row .emoji { font-size:30px; }
+  .car-row .grow, .shop-row .grow, .friend-row .grow { flex:1; }
+  .car-row .nm, .shop-row .nm, .friend-row .nm { font-weight:700; font-size:14px; }
+  .car-row .ds, .shop-row .ds, .friend-row .ds { font-size:12px; color:#888; margin-top:1px; }
+  .log-item { background:#fff; border-radius:10px; padding:8px 12px; margin-bottom:6px; font-size:13px; }
+  .log-item .lt { color:#aaa; font-size:11px; }
+  nav.tabs { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #f0e2cc; display:flex; z-index:10; }
+  nav.tabs button { flex:1; background:none; font-size:13px; padding:10px 0 12px; color:#999; border-radius:0; }
+  nav.tabs button.on { color:#ff6b6b; font-weight:800; }
+  .card { background:#fff; border-radius:14px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  input[type=text] { width:100%; padding:11px 12px; border:2px solid #f0dcbc; border-radius:10px; font-size:15px; outline:none; background:#fffdf8; }
+  input[type=text]:focus { border-color:#ffb26b; }
+  #toast { position:fixed; left:50%; top:44%; transform:translate(-50%,-50%); background:rgba(40,30,20,.92); color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; z-index:99; display:none; max-width:84vw; text-align:center; line-height:1.5; }
+  .hint { font-size:12px; color:#a08b6d; line-height:1.7; }
+  .friend-lot-head { display:flex; align-items:center; justify-content:space-between; margin:4px 2px 8px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">🚗 抢车位</div>
+  <div class="sub">把车停进好友的车位赚钱 · 停太久小心被贴条！</div>
+  <div class="me hidden" id="meBar">
+    <div><div class="who" id="meName"></div><div class="code" id="meCode"></div></div>
+    <div class="coins">💰 <span id="meCoins">0</span></div>
+  </div>
+</header>
+<main>
+  <!-- 建号 -->
+  <section id="viewCreate" class="hidden">
+    <div class="card">
+      <div style="font-size:17px;font-weight:800;margin-bottom:6px;">先给自己起个名字</div>
+      <p class="hint" style="margin-bottom:10px;">建好后你会拿到一个专属代码，把代码告诉好友，他就能来你的车位停车、你也能去他家贴条。</p>
+      <input type="text" id="nickInput" maxlength="10" placeholder="比如：红豆">
+      <div style="height:10px"></div>
+      <button class="btn-main btn-big" id="createBtn">🎉 创建我的车场</button>
+    </div>
+  </section>
+
+  <!-- 我的车场 -->
+  <section id="viewMine" class="hidden">
+    <h3 class="sec">🅿️ 我的车位（好友把车停这儿，你可以贴条）</h3>
+    <div class="grid" id="mySpots"></div>
+    <h3 class="sec">🚘 我的车</h3>
+    <div id="myCars"></div>
+    <p class="hint">玩法：去「好友」页把车停进好友的空车位，按分钟赚钱，满 60 分钟封顶；停满 10 分钟后车位主人就能贴条，罚走一半收入。记得及时挪车落袋为安！</p>
+  </section>
+
+  <!-- 好友 -->
+  <section id="viewFriend" class="hidden">
+    <div id="friendListWrap">
+      <h3 class="sec">👥 好友车场</h3>
+      <div id="friendList"></div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px;">输代码访问好友</div>
+        <input type="text" id="friendCodeInput" maxlength="6" placeholder="好友的 6 位代码" style="text-transform:uppercase;">
+        <div style="height:8px"></div>
+        <button class="btn-blue btn-big" id="visitBtn">去他家看看 →</button>
+      </div>
+    </div>
+    <div id="friendLotWrap" class="hidden">
+      <div class="friend-lot-head">
+        <div style="font-size:16px;font-weight:800;" id="friendLotTitle"></div>
+        <button class="btn-soft" id="backFriendsBtn">← 返回</button>
+      </div>
+      <div class="grid" id="friendSpots"></div>
+      <p class="hint" style="margin-top:10px;">点空车位上的「停这儿」，把你闲着的车停进来赚钱。停他家满 10 分钟后，他就能给你贴条，罚走一半——见好就收，去把车挪走。</p>
+    </div>
+  </section>
+
+  <!-- 商店 -->
+  <section id="viewShop" class="hidden">
+    <h3 class="sec">🏎️ 买车（越贵的车赚得越快）</h3>
+    <div id="shopCars"></div>
+    <h3 class="sec">🅿️ 扩建车位（车位多，好友停得多，你贴条的机会也多）</h3>
+    <div id="shopSpot"></div>
+  </section>
+
+  <!-- 动态 -->
+  <section id="viewLog" class="hidden">
+    <h3 class="sec">📰 我的动态</h3>
+    <div id="myLog"></div>
+  </section>
+</main>
+
+<nav class="tabs hidden" id="tabBar">
+  <button data-tab="Mine" class="on">🅿️ 车场</button>
+  <button data-tab="Friend">👥 好友</button>
+  <button data-tab="Shop">🛒 商店</button>
+  <button data-tab="Log">📰 动态</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ===== GitHub 中转配置 ===== */
+const OWNER = "xilei0123456", REPO = "little-story-shelf";
+const TK = (["github_", "pat_11B", "E7FTTY0", "Fzsh77o", "LvlJB_w", "LPw4OaB", "qdQ7V94", "dG4qK5J", "67M16KU", "Sy6aXwr", "M3EAPQz", "4O5QQYC", "HJcyuyp", "e9"]).join('');
+const API = "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/";
+const PDIR = "games/parking/players/";
+const REG_PATH = "games/parking/players.json";
+
+/* ===== 游戏参数 ===== */
+const MODELS = [
+  { key:"aotuo",    name:"奥拓",   emoji:"🚗", price:0,     rate:5  },
+  { key:"sangtana", name:"桑塔纳", emoji:"🚙", price:1200,  rate:9  },
+  { key:"baoma",    name:"宝马",   emoji:"🚘", price:5000,  rate:16 },
+  { key:"laosi",    name:"劳斯莱斯", emoji:"🏎️", price:20000, rate:30 }
+];
+const START_COINS = 1000, START_SPOTS = 3, MAX_SPOTS = 6, SPOT_PRICE = 1000;
+const CAP_MIN = 60;      // 赚钱封顶分钟
+const TICKET_MIN = 10;   // 停满多少分钟可贴条
+
+/* ===== 工具 ===== */
+const $ = id => document.getElementById(id);
+function toast(msg, ms){ const t=$("toast"); t.innerHTML=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none", ms||2200); }
+function b64enc(str){ return btoa(String.fromCharCode(...new TextEncoder().encode(str))); }
+function b64dec(b64){ const bin=atob(b64.replace(/\n/g,"")); const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0)); return new TextDecoder().decode(bytes); }
+function mins(since){ return Math.max(0, Math.floor((Date.now()-since)/60000)); }
+function earnedOf(spot){ return Math.min(mins(spot.since), CAP_MIN) * spot.rate; }
+function fmtTime(ts){ const d=new Date(ts); return (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+async function ghGet(path){
+  const r = await fetch(API+path+"?t="+Date.now(), { headers:{ "Authorization":"Bearer "+TK, "Accept":"application/vnd.github+json" }, cache:"no-store" });
+  if (r.status===404) return null;
+  if (!r.ok) throw new Error("读取失败 "+r.status);
+  const j = await r.json();
+  return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
+}
+async function ghPut(path, data, sha, msg){
+  const body = { message: msg||"parking game update", content: b64enc(JSON.stringify(data)) };
+  if (sha) body.sha = sha;
+  const r = await fetch(API+path, { method:"PUT", headers:{ "Authorization":"Bearer "+TK, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error("保存失败 "+r.status);
+  const j = await r.json();
+  return j.content.sha;
+}
+function addLog(p, msg){ p.log.unshift({ t: Date.now(), msg }); p.log = p.log.slice(0, 30); }
+function newCar(model){ return { id:"c"+Date.now().toString(36)+Math.floor(Math.random()*999), key:model.key, name:model.name, emoji:model.emoji, rate:model.rate, parked:null }; }
+function emptySpots(n){ return Array.from({length:n}, ()=>({ by:null })); }
+
+/* ===== 状态 ===== */
+let me = null, meSha = null;          // 我的存档
+let friend = null, friendSha = null, friendCode = null;  // 正在访问的好友
+let tab = "Mine";
+
+function myCode(){ return localStorage.getItem("parking_code") || ""; }
+async function loadMe(){
+  const code = myCode(); if (!code) return false;
+  const got = await ghGet(PDIR+code+".json");
+  if (!got) { localStorage.removeItem("parking_code"); return false; }
+  me = got.data; meSha = got.sha; return true;
+}
+async function saveMe(msg){ meSha = await ghPut(PDIR+me.code+".json", me, meSha, msg||"parking: save me"); }
+async function loadFriend(code){
+  const got = await ghGet(PDIR+code+".json");
+  if (!got) return false;
+  friend = got.data; friendSha = got.sha; friendCode = code; return true;
+}
+async function saveFriend(msg){ friendSha = await ghPut(PDIR+friend.code+".json", friend, friendSha, msg||"parking: save friend"); }
+
+/* ===== 建号 ===== */
+function genCode(){
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let s="";
+  for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+async function createPlayer(){
+  const name = $("nickInput").value.trim();
+  if (!name) { toast("先起个名字嘛"); return; }
+  $("createBtn").textContent = "创建中…";
+  try {
+    let code = genCode();
+    while (await ghGet(PDIR+code+".json")) code = genCode();
+    me = { code, name, coins: START_COINS, cars:[ newCar(MODELS[0]) ], spots: emptySpots(START_SPOTS), log: [] };
+    addLog(me, "🎉 你开张了自己的车场，系统送你一辆奥拓和 "+START_COINS+" 金币");
+    meSha = await ghPut(PDIR+code+".json", me, null, "parking: new player "+code);
+    // 登记到好友名册
+    try {
+      const reg = await ghGet(REG_PATH);
+      const list = reg ? reg.data : [];
+      list.push({ code, name });
+      await ghPut(REG_PATH, list, reg ? reg.sha : null, "parking: register "+code);
+    } catch(e) { /* 名册失败不挡建号 */ }
+    localStorage.setItem("parking_code", code);
+    toast("🎉 建好啦！你的代码是 <b>"+code+"</b><br>把代码告诉好友，他就能来玩", 3200);
+    showApp();
+  } catch(e) { toast("创建失败，检查网络再试一次"); $("createBtn").textContent="🎉 创建我的车场"; }
+}
+
+/* ===== 游戏动作 ===== */
+async function parkCar(carId, spotIdx){
+  if (!friend) return;
+  const car = me.cars.find(c=>c.id===carId);
+  if (!car || car.parked) { toast("这辆车不在车库里"); return; }
+  if (!await loadFriend(friendCode)) { toast("好友存档读取失败"); return; }
+  const spot = friend.spots[spotIdx];
+  if (!spot || spot.by) { toast("这个车位刚被人抢啦，换一个"); render(); return; }
+  spot.by = me.code; spot.carId = car.id; spot.carName = car.emoji+" "+car.name; spot.ownerName = me.name; spot.rate = car.rate; spot.since = Date.now();
+  car.parked = { lot: friend.code, spot: spotIdx, since: spot.since };
+  addLog(friend, "🚗 "+me.name+" 把 "+car.emoji+" "+car.name+" 停进了你的车位");
+  addLog(me, "🚗 你把 "+car.emoji+" "+car.name+" 停进了 "+friend.name+" 的车位，开始赚钱");
+  await saveFriend("parking: park in");
+  await saveMe("parking: park out");
+  toast("停好啦！每分钟 +"+car.rate+" 金币，记得回来挪车 😏");
+  render();
+}
+async function moveOut(carId){
+  const car = me.cars.find(c=>c.id===carId);
+  if (!car || !car.parked) return;
+  const lotOwner = car.parked.lot, spotIdx = car.parked.spot;
+  let hostName = lotOwner;
+  if (lotOwner === me.code) { car.parked = null; }
+  else {
+    if (await loadFriend(lotOwner)) {
+      hostName = friend.name;
+      const spot = friend.spots[spotIdx];
+      if (spot && spot.by===me.code && spot.carId===car.id) {
+        const e = earnedOf(spot);
+        me.coins += e;
+        addLog(friend, "👋 "+me.name+" 把车挪走了，赚了 "+e+" 金币");
+        friend.spots[spotIdx] = { by:null };
+        await saveFriend("parking: guest left");
+        toast("💰 挪车成功，落袋 "+e+" 金币！");
+      }
+      car.parked = null;
+    } else { car.parked = null; }
+  }
+  addLog(me, "💰 你从 "+hostName+" 的车位挪走了 "+car.emoji+" "+car.name);
+  await saveMe("parking: move out");
+  render();
+}
+async function ticket(spotIdx){
+  const spot = me.spots[spotIdx];
+  if (!spot || !spot.by) return;
+  if (mins(spot.since) < TICKET_MIN) { toast("还没停满 "+TICKET_MIN+" 分钟，不能贴条"); return; }
+  const total = earnedOf(spot), fine = Math.floor(total/2), rest = total - fine;
+  // 找到车主存档结算
+  let guest = null, guestSha = null;
+  if (spot.by !== me.code) {
+    const got = await ghGet(PDIR+spot.by+".json");
+    if (got) { guest = got.data; guestSha = got.sha; }
+  }
+  if (guest) {
+    const gcar = guest.cars.find(c=>c.id===spot.carId);
+    if (gcar) gcar.parked = null;
+    guest.coins += rest;
+    addLog(guest, "🚨 你在 "+me.name+" 家的车被贴条啦！收入 "+total+" 被罚走 "+fine);
+    await ghPut(PDIR+guest.code+".json", guest, guestSha, "parking: ticketed");
+  }
+  me.coins += fine;
+  addLog(me, "🚨 你给 "+spot.ownerName+" 的 "+spot.carName+" 贴了条，罚款 +"+fine+" 金币");
+  me.spots[spotIdx] = { by:null };
+  await saveMe("parking: ticket");
+  toast("🚨 贴条成功！罚了 "+fine+" 金币到你账上");
+  render();
+}
+async function buyCar(key){
+  const m = MODELS.find(x=>x.key===key);
+  if (!m) return;
+  if (me.coins < m.price) { toast("金币不够，还差 "+(m.price-me.coins)); return; }
+  me.coins -= m.price;
+  me.cars.push(newCar(m));
+  addLog(me, "🛒 你买了一辆 "+m.emoji+" "+m.name);
+  await saveMe("parking: buy car");
+  toast("🎉 "+m.emoji+" "+m.name+" 到手！去好友家停车赚钱吧");
+  render();
+}
+async function buySpot(){
+  if (me.spots.length >= MAX_SPOTS) { toast("车位已经满啦"); return; }
+  if (me.coins < SPOT_PRICE) { toast("金币不够，还差 "+(SPOT_PRICE-me.coins)); return; }
+  me.coins -= SPOT_PRICE;
+  me.spots.push({ by:null });
+  addLog(me, "🅿️ 你扩建了一个新车位");
+  await saveMe("parking: buy spot");
+  toast("🅿️ 新车位建好啦");
+  render();
+}
+</script>
+<script>
+"use strict";
+/* ===== 渲染 ===== */
+function showApp(){
+  $("viewCreate").classList.add("hidden");
+  $("meBar").classList.remove("hidden");
+  $("tabBar").classList.remove("hidden");
+  render();
+}
+function render(){
+  if (!me) return;
+  $("meName").textContent = "🏠 " + me.name + " 的车场";
+  $("meCode").textContent = "我的代码：" + me.code + "（点这里复制）";
+  $("meCoins").textContent = me.coins;
+  ["Mine","Friend","Shop","Log"].forEach(t=>{
+    $("view"+t).classList.toggle("hidden", tab!==t);
+    document.querySelector('nav.tabs button[data-tab="'+t+'"]').classList.toggle("on", tab===t);
+  });
+  renderMine(); renderShop(); renderLog();
+  if (tab==="Friend") { friend ? renderFriendLot() : renderFriendList(); }
+}
+function spotHtml(spot, idx, isMine){
+  if (!spot.by) return '<div class="spot"><div class="empty">🅿️</div><div class="info">空车位</div></div>';
+  const m = mins(spot.since), e = earnedOf(spot);
+  let btn = "";
+  if (isMine) {
+    btn = m >= TICKET_MIN
+      ? '<button class="btn-main" onclick="doTicket('+idx+')">🚨 贴条</button>'
+      : '<button class="btn-grey">还差 '+(TICKET_MIN-m)+' 分钟可贴条</button>';
+  }
+  return '<div class="spot occupied"><div class="car-emoji">'+spot.carName.split(" ")[0]+'</div>' +
+    '<div class="nm">'+spot.ownerName+'</div>' +
+    '<div class="info">已停 '+m+' 分钟</div>' +
+    '<div class="earn">已赚 '+e+' 币</div>' + btn + '</div>';
+}
+function renderMine(){
+  $("mySpots").innerHTML = me.spots.map((s,i)=>spotHtml(s,i,true)).join("");
+  $("myCars").innerHTML = me.cars.map(c=>{
+    let right = "", ds = "赚钱速度 "+c.rate+" 币/分钟";
+    if (c.parked) {
+      const host = (friend && friend.code===c.parked.lot) ? friend.name : (c.parked.lot===me.code ? "我家" : "好友");
+      ds = "停在 " + host + " 家 · 已停 " + mins(c.parked.since) + " 分钟";
+      right = '<button class="btn-main" onclick="doMoveOut(\''+c.id+'\')">挪车收款</button>';
+    } else {
+      right = '<button class="btn-soft" onclick="goFriend()">去停车 →</button>';
+    }
+    return '<div class="car-row"><div class="emoji">'+c.emoji+'</div><div class="grow"><div class="nm">'+c.name+'</div><div class="ds">'+ds+'</div></div>'+right+'</div>';
+  }).join("");
+}
+async function renderFriendList(){
+  const wrap = $("friendList"); if (!wrap) return;
+  let list = [];
+  try { const reg = await ghGet(REG_PATH); if (reg) list = reg.data.filter(x=>x.code!==me.code); } catch(e){}
+  wrap.innerHTML = list.length
+    ? list.map(f=>'<div class="friend-row"><div class="emoji" style="font-size:26px;">🏠</div><div class="grow"><div class="nm">'+f.name+'</div><div class="ds">代码 '+f.code+'</div></div><button class="btn-blue" onclick="visitFriend(\''+f.code+'\')">去停车 →</button></div>').join("")
+    : '<p class="hint" style="margin-bottom:10px;">还没有好友加入。把游戏链接和你的代码发给朋友，他建好号就会出现在这里。</p>';
+}
+function renderFriendLot(){
+  $("friendListWrap").classList.add("hidden");
+  $("friendLotWrap").classList.remove("hidden");
+  $("friendLotTitle").textContent = "🏠 " + friend.name + " 的车场";
+  $("friendSpots").innerHTML = friend.spots.map((s,i)=>{
+    if (!s.by) {
+      const idle = me.cars.filter(c=>!c.parked);
+      if (!idle.length) return '<div class="spot"><div class="empty">🅿️</div><div class="info">空车位<br>（你没闲车）</div></div>';
+      return '<div class="spot"><div class="empty">🅿️</div><div class="info">空车位</div><button class="btn-blue" onclick="doParkPrompt('+i+')">停这儿</button></div>';
+    }
+    if (s.by===me.code) {
+      return '<div class="spot occupied"><div class="car-emoji">'+s.carName.split(" ")[0]+'</div><div class="nm">我的车</div><div class="info">已停 '+mins(s.since)+' 分钟</div><div class="earn">已赚 '+earnedOf(s)+' 币</div><button class="btn-main" onclick="doMoveOut(\''+s.carId+'\')">挪车收款</button></div>';
+    }
+    return spotHtml(s, i, false);
+  }).join("");
+}
+function doParkPrompt(spotIdx){
+  const idle = me.cars.filter(c=>!c.parked);
+  if (idle.length===1) { doPark(idle[0].id, spotIdx); return; }
+  const pick = prompt("停哪辆车？输入序号：\n" + idle.map((c,i)=>(i+1)+". "+c.emoji+" "+c.name+"（"+c.rate+"币/分钟）").join("\n"), "1");
+  const c = idle[parseInt(pick,10)-1];
+  if (c) doPark(c.id, spotIdx);
+}
+function renderShop(){
+  $("shopCars").innerHTML = MODELS.filter(m=>m.price>0).map(m=>
+    '<div class="shop-row"><div class="emoji" style="font-size:30px;">'+m.emoji+'</div><div class="grow"><div class="nm">'+m.name+'</div><div class="ds">'+m.rate+' 币/分钟</div></div><button class="'+(me.coins>=m.price?"btn-main":"btn-grey")+'" onclick="doBuyCar(\''+m.key+'\')">💰 '+m.price+'</button></div>'
+  ).join("");
+  const full = me.spots.length>=MAX_SPOTS;
+  $("shopSpot").innerHTML = '<div class="shop-row"><div class="emoji" style="font-size:30px;">🅿️</div><div class="grow"><div class="nm">新车位</div><div class="ds">现在有 '+me.spots.length+' 个 · 上限 '+MAX_SPOTS+' 个</div></div>' +
+    (full ? '<button class="btn-grey">已满</button>' : '<button class="'+(me.coins>=SPOT_PRICE?"btn-main":"btn-grey")+'" onclick="doBuySpot()">💰 '+SPOT_PRICE+'</button>') + '</div>';
+}
+function renderLog(){
+  $("myLog").innerHTML = me.log.length
+    ? me.log.map(l=>'<div class="log-item">'+l.msg+'<div class="lt">'+fmtTime(l.t)+'</div></div>').join("")
+    : '<p class="hint">还没有动态，去好友家停个车吧。</p>';
+}
+
+/* ===== 动作包装（带忙碌保护） ===== */
+let busy = false;
+async function guard(fn){ if (busy) return; busy = true; try { await fn(); } catch(e) { toast("网络有点问题，再试一次"); } busy = false; }
+function doPark(carId, spotIdx){ guard(()=>parkCar(carId, spotIdx)); }
+function doMoveOut(carId){ guard(()=>moveOut(carId)); }
+function doTicket(idx){ guard(()=>ticket(idx)); }
+function doBuyCar(key){ guard(()=>buyCar(key)); }
+function doBuySpot(){ guard(()=>buySpot()); }
+function goFriend(){ tab = "Friend"; friend = null; render(); }
+async function visitFriend(code){
+  code = (code||"").trim().toUpperCase();
+  if (!code) { toast("先输好友代码"); return; }
+  if (code === me.code) { toast("这是你自己的代码啦"); return; }
+  if (await loadFriend(code)) { $("friendListWrap").classList.add("hidden"); render(); }
+  else toast("没找到这个代码的车场，核对一下");
+}
+
+/* ===== 事件 ===== */
+document.querySelectorAll("nav.tabs button").forEach(b=>{
+  b.addEventListener("click", ()=>{ tab = b.dataset.tab; if (tab!=="Friend") { /* 保留 friend 状态 */ } render(); });
+});
+$("createBtn").addEventListener("click", ()=>guard(createPlayer));
+$("visitBtn").addEventListener("click", ()=>guard(()=>visitFriend($("friendCodeInput").value)));
+$("backFriendsBtn").addEventListener("click", ()=>{ friend=null; $("friendLotWrap").classList.add("hidden"); $("friendListWrap").classList.remove("hidden"); render(); });
+$("meCode").addEventListener("click", ()=>{
+  if (navigator.clipboard) navigator.clipboard.writeText(me.code).then(()=>toast("代码 "+me.code+" 已复制，发给好友吧"));
+});
+
+/* ===== 启动与定时刷新 ===== */
+(async function init(){
+  try {
+    if (await loadMe()) showApp();
+    else { $("viewCreate").classList.remove("hidden"); }
+  } catch(e) { $("viewCreate").classList.remove("hidden"); }
+  setInterval(async ()=>{
+    if (!me) return;
+    try {
+      const keepFriend = friendCode;
+      await loadMe();
+      if (keepFriend && tab==="Friend") await loadFriend(keepFriend);
+      render();
+    } catch(e){}
+  }, 20000);
+  setInterval(()=>{ if (me) render(); }, 30000);
+})();
+</script>
+</body>
+</html>
