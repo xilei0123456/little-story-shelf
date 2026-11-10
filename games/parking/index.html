@@ -137,7 +137,7 @@
 "use strict";
 /* ===== GitHub 中转配置 ===== */
 const OWNER = "xilei0123456", REPO = "little-story-shelf";
-const TK = (["github_", "pat_11B", "E7FTTY0", "Fzsh77o", "LvlJB_w", "LPw4OaB", "qdQ7V94", "dG4qK5J", "67M16KU", "Sy6aXwr", "M3EAPQz", "4O5QQYC", "HJcyuyp", "e9"]).join('');
+const TK = ["github_", "pat_11B", "E7FTTY0", "Fzsh77o", "LvlJB_w", "LPw4OaB", "qdQ7V94", "dG4qK5J", "67M16KU", "Sy6aXwr", "M3EAPQz", "4O5QQYC", "HJcyuyp", "e9"].join('');
 const API = "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/";
 const PDIR = "games/parking/players/";
 const REG_PATH = "games/parking/players.json";
@@ -169,12 +169,22 @@ async function ghGet(path){
   return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
 }
 async function ghPut(path, data, sha, msg){
-  const body = { message: msg||"parking game update", content: b64enc(JSON.stringify(data)) };
-  if (sha) body.sha = sha;
-  const r = await fetch(API+path, { method:"PUT", headers:{ "Authorization":"Bearer "+TK, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error("保存失败 "+r.status);
-  const j = await r.json();
-  return j.content.sha;
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const body = { message: msg||"parking game update", content: b64enc(JSON.stringify(data)) };
+    if (sha) body.sha = sha;
+    try {
+      const r = await fetch(API+path, { method:"PUT", headers:{ "Authorization":"Bearer "+TK, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body: JSON.stringify(body) });
+      if (r.ok) { const j = await r.json(); return j.content.sha; }
+      lastErr = new Error("保存失败 "+r.status);
+      if (r.status === 409 || r.status === 422) {
+        const fresh = await ghGet(path);
+        sha = fresh ? fresh.sha : sha;
+      }
+    } catch(e) { lastErr = e; }
+    await new Promise(res => setTimeout(res, 1500));
+  }
+  throw lastErr || new Error("保存失败");
 }
 function addLog(p, msg){ p.log.unshift({ t: Date.now(), msg }); p.log = p.log.slice(0, 30); }
 function newCar(model){ return { id:"c"+Date.now().toString(36)+Math.floor(Math.random()*999), key:model.key, name:model.name, emoji:model.emoji, rate:model.rate, parked:null }; }
