@@ -251,9 +251,16 @@ async function parkCar(carId, spotIdx){
   car.parked = { lot: friend.code, spot: spotIdx, since: spot.since };
   addLog(friend, "🚗 "+me.name+" 把 "+car.emoji+" "+car.name+" 停进了你的车位");
   addLog(me, "🚗 你把 "+car.emoji+" "+car.name+" 停进了 "+friend.name+" 的车位，开始赚钱");
-  await saveFriend("parking: park in");
-  await saveMe("parking: park out");
+  /* 先给反馈再存档：点完立刻看到车停好，存盘在后台慢慢走，不再干等 */
+  render();
   toast("停好啦！每分钟 +"+car.rate+" 金币，记得回来挪车 😏");
+  try {
+    await saveFriend("parking: park in");
+    await saveMe("parking: park out");
+  } catch(e) {
+    toast("网络慢，存档还在补存，稍等几秒别急着退出");
+    try { await saveFriend("parking: park in retry"); await saveMe("parking: park out retry"); } catch(e2) {}
+  }
   render();
 }
 async function moveOut(carId){
@@ -261,6 +268,7 @@ async function moveOut(carId){
   if (!car || !car.parked) return;
   const lotOwner = car.parked.lot, spotIdx = car.parked.spot;
   let hostName = lotOwner;
+  let needSaveFriend = false;
   if (lotOwner === me.code) { car.parked = null; }
   else {
     if (await loadFriend(lotOwner)) {
@@ -271,14 +279,22 @@ async function moveOut(carId){
         me.coins += e;
         addLog(friend, "👋 "+me.name+" 把车挪走了，赚了 "+e+" 金币");
         friend.spots[spotIdx] = { by:null };
-        await saveFriend("parking: guest left");
+        needSaveFriend = true;
         toast("💰 挪车成功，落袋 "+e+" 金币！");
       }
       car.parked = null;
     } else { car.parked = null; }
   }
   addLog(me, "💰 你从 "+hostName+" 的车位挪走了 "+car.emoji+" "+car.name);
-  await saveMe("parking: move out");
+  /* 同样先反馈：钱和车先在本地落袋，存盘随后跟上 */
+  render();
+  try {
+    if (needSaveFriend) await saveFriend("parking: guest left");
+    await saveMe("parking: move out");
+  } catch(e) {
+    toast("网络慢，存档还在补存，稍等几秒别急着退出");
+    try { if (needSaveFriend) await saveFriend("parking: guest left retry"); await saveMe("parking: move out retry"); } catch(e2) {}
+  }
   render();
 }
 async function ticket(spotIdx){
