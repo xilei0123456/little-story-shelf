@@ -1,6 +1,15 @@
 {
  "papers": [
   {
+   "id": "unit4-safety-first-practice1",
+   "title": "Unit 4 Safety first",
+   "zh": "错题同类练习 · 安全第一",
+   "badge": "练",
+   "date": "2026-11-17",
+   "path": "papers/unit4-safety-first-practice1.html",
+   "ver": 1
+  },
+  {
    "id": "unit1-good-habits-practice1",
    "title": "Unit 1 Good habits",
    "zh": "错题同类练习 · 好习惯",
