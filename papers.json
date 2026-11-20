@@ -1,6 +1,15 @@
 {
  "papers": [
   {
+   "id": "unit5-at-weekends-paper",
+   "title": "Unit 5 At weekends",
+   "zh": "单元测试卷 · 周末活动",
+   "badge": "U5",
+   "date": "2026-11-20",
+   "path": "papers/unit5-at-weekends-quiz-paper.html",
+   "ver": 1
+  },
+  {
    "id": "unit4-safety-first-practice1",
    "title": "Unit 4 Safety first",
    "zh": "错题同类练习 · 安全第一",
